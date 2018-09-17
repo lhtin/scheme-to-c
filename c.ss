@@ -2,11 +2,11 @@
 ;;; See the accompanying file Copyright for details
 ;;;
 ;;; A nanopass compiler developed to use as a demo during Clojure Conj 2013.
-;;; The source language for the compiler is: 
+;;; The source language for the compiler is:
 ;;;
 ;;; Expr      --> <Primitive>
-;;;            |  <Var> 
-;;;            |  <Const> 
+;;;            |  <Var>
+;;;            |  <Const>
 ;;;            |  (quote <Datum>)
 ;;;            |  (if <Expr> <Expr>)
 ;;;            |  (if <Expr> <Expr> <Expr>)
@@ -23,7 +23,7 @@
 ;;; Primitive --> car | cdr | cons | pair? | null? | boolean? | make-vector
 ;;;            |  vector-ref | vector-set! | vector? | vector-length | box
 ;;;            |  unbox | set-box! | box? | + | - | * | / | = | < | <= | >
-;;;            |  >= | eq? 
+;;;            |  >= | eq?
 ;;; Var       --> symbol
 ;;; Const     --> #t | #f | '() | integer between -2^60 and 2^60 - 1
 ;;; Datum     --> <Const> | (<Datum> . <Datum>) | #(<Datum> ...)
@@ -61,7 +61,7 @@
 ;;;     compile it using gcc to a program t, run the program t, directing its
 ;;;     output to t.out, and finally use the Scheme reader to read t.out and
 ;;;     return the value to the host Scheme system.  For example, if we wanted
-;;;     to run a program that calculates the factorial of 5, we could do the 
+;;;     to run a program that calculates the factorial of 5, we could do the
 ;;;     following:
 ;;;     (my-tiny-compile '(letrec ([f (lambda (n)
 ;;;                                     (if (= n 0)
@@ -104,7 +104,7 @@
     L3 unparse-L3
     L4 unparse-L4
     L5 unparse-L5
-    L6 unparse-L6 
+    L6 unparse-L6
     L7 unparse-L7
     L8 unparse-L8
     L9 unparse-L9
@@ -164,7 +164,7 @@
     inverse-eta-raw-primitives
     quote-constants
     remove-complex-constants
-    identify-assigned-variables 
+    identify-assigned-variables
     purify-letrec
     optimize-direct-call
     find-let-bound-lambdas
@@ -186,7 +186,7 @@
     generate-c
 
     use-boehm?
-    
+
     my-tiny-compile
     trace-passes
     all-passes)
@@ -209,19 +209,19 @@
   ;;; for a tag when in our representation of vectors, closures, etc.
   (define fixnum-tag   #b000)
   (define fixnum-mask  #b111)
-  
+
   (define pair-tag     #b001)
   (define pair-mask    #b111)
-  
+
   (define box-tag      #b010)
   (define box-mask     #b111)
-  
+
   (define vector-tag   #b011)
   (define vector-mask  #b111)
-  
+
   (define closure-tag  #b100)
   (define closure-mask #b111)
-  
+
   ;;; NOTE: #b101 is used for constants
 
   (define boolean-tag    #b1101)
@@ -251,6 +251,7 @@
             (string-append (symbol->string name) "." (number->string c)))))))
 
   ;; strip the numberic bit back off the unique-var
+  ;;;; e.g.: var.12 -> var
   (define base-var
     (lambda (x)
       (define s0
@@ -274,9 +275,9 @@
                           "not a unique-var created variable" x)])))))
       (string->symbol
         (list->string
-          (reverse 
+          (reverse
             (s0 (reverse (string->list (symbol->string x)))))))))
-      
+
 
   ;;; Convenience procedure for building temporaries in the compiler.
   (define make-tmp (lambda () (unique-var 't)))
@@ -401,7 +402,7 @@
   (define closure+void+primitive?
     (lambda (x)
       (assq x closure+void+user-prims)))
-  
+
   (define effect-free-prim?
     (lambda (x)
       (assq x (append void+user-non-alloc-value-prims user-alloc-value-prims
@@ -473,8 +474,9 @@
                    (loop (fx- n 1) (cons v ls))))]))
 
   ;;;;;;;;
+  ;;;; 集合数据结构基本操作
   ;;; The standard (not very efficient) Scheme representation of sets as lists
-  
+
   ;;; add an item to a set
   (define set-cons
     (lambda (x set)
@@ -483,7 +485,7 @@
           (cons x set))))
 
   ;;; construct the intersection of 0 to n sets
-  (define intersect
+  (define intersect ;;;; 交集
     (lambda set*
       (if (null? set*)
           '()
@@ -498,7 +500,7 @@
             (car set*) (cdr set*)))))
 
   ;;; construct the union of 0 to n sets
-  (define union
+  (define union ;;;; 并集
     (lambda set*
       (if (null? set*)
           '()
@@ -510,7 +512,7 @@
             (car set*) (cdr set*)))))
 
   ;;; construct the difference of 0 to n sets
-  (define difference
+  (define difference ;;;; 差集
     (lambda set*
       (if (null? set*)
           '()
@@ -822,7 +824,7 @@
     (extends L8)
     (Expr (e body)
       (- le)))
-      
+
   ;;; Language 10: removes set! and assigned bodies (to be replaced by set-box!
   ;;; primcall for set!, and unbox primcall for references of assigned variables).
   ;
@@ -857,7 +859,7 @@
       (+ (lambda (x* ...) body)))
     (AssignedBody (abody)
       (- (assigned (a* ...) body))))
-  
+
   ;;; Language 11: add a list of free variables to the body of lambda
   ;;; expressions (starting closure conversion code).
   ;
@@ -1042,7 +1044,7 @@
       (+ x
          (label l)
          (quote c))))
-  
+
   ;;; Language 16: separates the Expr nonterminal into the Value, Effect, and
   ;;; Predicate nonterminals.  This is needed to translate from our expression
   ;;; language into a language like C that has statements (effects) and
@@ -1446,7 +1448,7 @@
   ;;; beginning of our pass listings
 
   ;;; pass: parse-and-rename : S-expression -> Lsrc (or error)
-  ;;; 
+  ;;;
   ;;; parses an S-expression, and, if it conforms to the input language,
   ;;; renames the local variables to be represented with a unique variable.
   ;;; This helps us to separate keywords from varialbes and recognize one
@@ -1663,7 +1665,7 @@
     ;;; kick off processing the S-expression by handing Expr our initial
     ;;; S-expression and the initial environment.
     (Expr e initial-env))
-  
+
   ;;; pass: remove-one-armed-if : Lsrc -> L1
   ;;;
   ;;; this pass replaces the (if e0 e1) form with an if that will explicitly
@@ -1677,7 +1679,7 @@
   (define-pass remove-one-armed-if : Lsrc (e) -> L1 ()
     (Expr : Expr (e) -> Expr ()
       [(if ,[e0] ,[e1]) `(if ,e0 ,e1 (void))]))
-  
+
   ;;; pass: remove-and-or-not : L1 -> L2
   ;;;
   ;;; this pass looks for references to and, or, and not and replaces it with
@@ -1750,12 +1752,12 @@
       (definitions
         ;;; build-begin - helper function to build a begin only when the body
         ;;; contains more then one expression.  (this version of the helper
-        ;;; is a little over-kill, but it makes our traces look a little 
+        ;;; is a little over-kill, but it makes our traces look a little
         ;;; cleaner.  there should be a simpler way of doing this.)
         (define build-begin
           (lambda (e* e)
             (nanopass-case (L3 Expr) e
-              [(begin ,e1* ... ,e) 
+              [(begin ,e1* ... ,e)
                (build-begin (append e* e1*) e)]
               [else
                (if (null? e*)
@@ -1800,13 +1802,13 @@
   ;;;
   ;;; (pr e* ...) => (primcall pr e* ...)
   ;;; pr          => (lambda (x* ...) (primcall pr x* ...))
-  ;;; 
+  ;;;
   ;;; Design decision: Another way to handle this would be to create a single
   ;;; function for each primitive, and lift these definitions to the top-level
   ;;; of the program, including just those primitives that are used.  This
   ;;; would avoid the potential to re-creating the same procedure over and over
   ;;; again, as we are now.
-  ;;; 
+  ;;;
   (define-pass inverse-eta-raw-primitives : L3 (e) -> L4 ()
     (Expr : Expr (e) -> Expr ()
       [(,pr ,[e*] ...) `(primcall ,pr ,e* ...)]
@@ -1877,7 +1879,7 @@
                              e*
                              (let ([l (fx- l 1)])
                                (loop l
-                                 (cons 
+                                 (cons
                                    `(primcall vector-set! ,t
                                       (quote ,l)
                                       ,(datum->expr (vector-ref x l)))
@@ -1947,7 +1949,7 @@
   ;;;              binding form.
   ;;; union      - to gather assigned variables from sub-expressions into a
   ;;;              single set.
-  ;;; 
+  ;;;
   ;;; Note: we are using a relatively inefficient representation of sets here,
   ;;; simply representing them as lists and using our set-cons, intersect,
   ;;; difference, and union procedures to maintain their set-ness.  We could
@@ -1990,7 +1992,7 @@
        (values `(begin ,e* ... ,e) (apply union assigned* assigned**))]
       [(,[e assigned*] ,[e* assigned**] ...)
        (values `(,e ,e* ...) (apply union assigned* assigned**))])
-    ;; in the body, call 
+    ;; in the body, call
     (let-values ([(e assigned*) (Expr e)])
       (unless (null? assigned*)
         (error who "found one or more unbound variables" assigned*))
@@ -2009,7 +2011,7 @@
   ;;;          [b (+ 5 7)]
   ;;;          [g (lambda (h) (f h 5))]
   ;;;          [c (let ([x 10]) ((letrec ([zero? (lambda (n) (= n 0))]
-  ;;;                                     [f (lambda (n) 
+  ;;;                                     [f (lambda (n)
   ;;;                                          (if (zero? n)
   ;;;                                              1
   ;;;                                              (* n (f (- n 1)))))])
@@ -2041,7 +2043,7 @@
   ;;;           (set! z (lambda (x) (+ x x)))
   ;;;           (set! m (+ m m))
   ;;;           (+ (+ (+ (f z a) (f z b)) (f z c)) (g z)))))))
-  ;;; 
+  ;;;
   ;;; The algorithm for doing this is fairly simple.  We attempt to separate
   ;;; the bindings into simple bindings, lambda bindings, and complex bindings.
   ;;; Simple bindings bind a constant, a variable reference not bound in this
@@ -2102,7 +2104,7 @@
         (define build-begin
           (lambda (e* e)
             (nanopass-case (L8 Expr) e
-              [(begin ,e1* ... ,e) 
+              [(begin ,e1* ... ,e)
                (build-begin (append e* e1*) e)]
               [else
                (if (null? e*)
@@ -2154,7 +2156,7 @@
   ;;;
   ;;; ((lambda (x* ...) body) e* ...) => (let ([x* e*] ...) body)
   ;;; where (length x*) == (length e*)
-  ;;; 
+  ;;;
   (define-pass optimize-direct-call : L8 (e) -> L8 ()
     (Expr : Expr (e) -> Expr ()
       [((lambda (,x* ...) ,[abody]) ,[e* -> e*] ...)
@@ -2186,7 +2188,7 @@
   ;;; decisions of the purify-letrec pass, or in the existing letrec pass. It
   ;;; is kept separate here, largely to make the letrec pass more straight
   ;;; forward to understand.
-  ;;; 
+  ;;;
   (define-pass find-let-bound-lambdas : L8 (e) -> L8 ()
     (Expr : Expr (e) -> Expr ()
       (definitions
@@ -2271,9 +2273,9 @@
   ;;;   (let ([xa0 (primcall box t0)] [xa1 (primcall box t1)] ...)
   ;;;     body^))
   ;;;
-  ;;; where 
+  ;;; where
   ;;; (set! xa0 e) => (primcall set-box! xa0 e^)
-  ;;; and 
+  ;;; and
   ;;; xa0 => (primcall unbox xa0)
   ;;; in body^ and e^
   ;;;
@@ -2345,7 +2347,7 @@
   ;;; Commercial Compiler Development" by Keep).  This is an analysis pass,
   ;;; so we are just gathering up the free variables.  This will look somewhat
   ;;; similar to the identify-assigned-variables, except we care about all
-  ;;; variable references, but only the free variables at lambdas. 
+  ;;; variable references, but only the free variables at lambdas.
   ;;;
   (define-pass uncover-free : L10 (e) -> L11 ()
     (Expr : Expr (e) -> Expr (free*)
@@ -2361,7 +2363,7 @@
       [(letrec ([,x* ,[le* free**]] ...) ,[body free*])
        (values `(letrec ([,x* ,le*] ...) ,body)
          (difference (apply union free* free**) x*))]
-      ;; in all the other cases, we simply want to gather up the 
+      ;; in all the other cases, we simply want to gather up the
       ;; variable references from each sub expression
       [(if ,[e0 free0*] ,[e1 free1*] ,[e2 free2*])
        (values `(if ,e0 ,e1 ,e2) (union free0* free1* free2*))]
@@ -2406,12 +2408,12 @@
   ;;; (letrec ([x* (lambda (x** ...) (free (f** ...) body*))] ...) body) =>
   ;;; (closures ([x* l* f** ...] ...)
   ;;;   (labels ([l* (lambda (cp* x** ...) (free (f** ...) body*))] ...) body))
-  ;;; where l* is a list of labels for each lambda expression and cp* is a 
+  ;;; where l* is a list of labels for each lambda expression and cp* is a
   ;;; list of variables representing an explicit closure argument
   ;;;
   ;;; (x e* ...) => (x x e* ...) ; a small optimization
   ;;; (e e* ...) => (let ([t e]) (t t e* ...))
-  ;;; 
+  ;;;
   ;;; Design decision: We separate the steps of closure creation and explicit
   ;;; allocation and setting of closure values, partially so that we can
   ;;; implement closure optimization passes that can help reduce the number of
@@ -2469,7 +2471,7 @@
   ;;; is fast and simple, but if we want a more precise analysis, and we are
   ;;; willing to pay the additional cost (slightly less than cubic for 0CFA or
   ;;; exponential for 1CFA or higher), than we could perform a more precise
-  ;;; analysis here. 
+  ;;; analysis here.
   ;;;
   (define-pass optimize-known-call : L12 (e) -> L12 ()
     (LabelsBody : LabelsBody (lbody env) -> LabelsBody ())
@@ -2516,7 +2518,7 @@
   ;;; x          => (closure-ref cp idx)      ; where x is a free variable, and
   ;;;                                         ; idx is the offset of the free
   ;;;                                         ; variable in the closure.
-  ;;; 
+  ;;;
   ;;;
   ;;; Design decision: We could also combine this with the lift-lambdas pass
   ;;; and finish lifting (our now first-order) procedures to the top-level of
@@ -2685,7 +2687,7 @@
   ;;;   we also do a small optimization, if we see (true) or (false) in
   ;;;   the output of an 'if' test form, we choose either the consequent or
   ;;;   the alternative.
-  ;;; 
+  ;;;
   ;;; Design decision: We could swap recognize-context and
   ;;; remove-complex-expr*, which would allow us to avoid building the 'let'
   ;;; form when a Value prim or procedure call appears in the Predicate
@@ -2762,7 +2764,7 @@
   ;;; start executing the primitive.  In our little compiler, we could get away
   ;;; with cheating, but if we added a feature like call/cc our cheats would be
   ;;; observable.
-  ;;; 
+  ;;;
   (define-pass expose-allocation-primitives : L16 (e) -> L17 ()
     (Value : Value (v) -> Value ()
       [(primcall ,vpr ,[se])
@@ -2810,7 +2812,7 @@
                    (primcall $set-cdr! ,t2 ,t1)
                    ,t2))))]
          [else `(primcall ,vpr ,se0 ,se1)])]))
-  
+
   ;;; pass: return-of-set! : L17 -> L18
   ;;;
   ;;; In this psss we remove the 'let' form and replace it with set!.  While
@@ -2848,7 +2850,7 @@
         (define build-begin
           (lambda (e* v)
             (nanopass-case (L18 Value) v
-              [(begin ,e1* ... ,v) 
+              [(begin ,e1* ... ,v)
                (build-begin (append e* e1*) v)]
               [else
                (if (null? e*)
@@ -2871,7 +2873,7 @@
       [(,[se var*] ,[se* var**] ...)
        (values `(,se ,se* ...) (apply append var* var**))]
       [(let ([,x* ,[v* var**]] ...) ,[body var*])
-       (values 
+       (values
          (build-set*! x* v* body build-begin)
          (apply append x* var* var**))])
     (Effect : Effect (e) -> Effect ('())
@@ -2879,7 +2881,7 @@
         (define build-begin
           (lambda (e* e)
             (nanopass-case (L18 Effect) e
-              [(begin ,e1* ... ,e) 
+              [(begin ,e1* ... ,e)
                (build-begin (append e* e1*) e)]
               [else
                (if (null? e*)
@@ -2910,7 +2912,7 @@
         (define build-begin
           (lambda (e* p)
             (nanopass-case (L18 Predicate) p
-              [(begin ,e1* ... ,p) 
+              [(begin ,e1* ... ,p)
                (build-begin (append e* e1*) p)]
               [else
                (if (null? e*)
@@ -2937,7 +2939,7 @@
     (LambdaExpr : LambdaExpr (le) -> LambdaExpr ()
       [(lambda (,x* ...) ,[body var*])
        `(lambda (,x* ...) (locals (,var* ...) ,body))]))
-  
+
   ;;; pass: flatten-set! : L18 -> L19
   ;;;
   ;;; In the previous pass we remove the 'let' form, but we now may have set!
@@ -2966,7 +2968,7 @@
       [,se `(set! ,x ,(SimpleExpr se))]
       [(primcall ,vpr ,[se*] ...) `(set! ,x (primcall ,vpr ,se* ...))]
       [(alloc ,i ,[se]) `(set! ,x (alloc ,i ,se))]
-      [(,[se] ,[se*] ...) `(set! ,x (,se ,se* ...))]))   
+      [(,[se] ,[se*] ...) `(set! ,x (,se ,se* ...))]))
 
   ;;; pass: push-if : L19 -> L20
   ;;;
@@ -2981,7 +2983,7 @@
   ;;;      our generated code.
   ;;; Number 2 is a more reasonable solution, but lucky for us, C will allow us
   ;;; to generate code like the following:
-  ;;; 
+  ;;;
   ;;; (if (begin ,e0* ... ,p0) (begin ,e1* ... ,p1) (begin ,e2* ... ,p2)) =>
   ;;;
   ;;; (((e0*[0]), (e0*[1]), ..., (e0*[n]), p0) ?
@@ -3009,7 +3011,7 @@
   ;     [(begin ,[e*] ... ,[p more-e*]) (values p (append e* more-e*))]
   ;     [(if ,[p0 e0*] ,[p1 e1*] ,[p2 e2*])
   ;      (values `(if ,p0 (begin ,e1* ... p1) (begin ,e2* ... ,p2)) e0*)]))
- 
+
   ;;; pass: specify-constant-representation : L19 -> L21
   ;;;
   ;;; This pass replaces our quoted constants with the explicit ptr
@@ -3059,7 +3061,7 @@
         (define build-begin
           (lambda (e* v)
             (nanopass-case (L22 Value) v
-              [(begin ,e1* ... ,v) 
+              [(begin ,e1* ... ,v)
                (build-begin (append e* e1*) v)]
               [else
                (if (null? e*)
@@ -3108,7 +3110,7 @@
         (define build-begin
           (lambda (e* e)
             (nanopass-case (L22 Effect) e
-              [(begin ,e1* ... ,e) 
+              [(begin ,e1* ... ,e)
                (build-begin (append e* e1*) e)]
               [else
                (if (null? e*)
@@ -3144,7 +3146,7 @@
         (define build-begin
           (lambda (e* p)
             (nanopass-case (L22 Predicate) p
-              [(begin ,e1* ... ,p) 
+              [(begin ,e1* ... ,p)
                (build-begin (append e* e1*) p)]
               [else
                (if (null? e*)
@@ -3331,7 +3333,7 @@
       [(multiply ,se0 ,se1) (format-binop "*" se0 se1)]
       [(subtract ,se0 ,se1) (format-binop "-" se0 se1)]
       [(add ,se0 ,se1) (format-binop "+" se0 se1)]
-      [(mref ,se0 ,se1? ,i) 
+      [(mref ,se0 ,se1? ,i)
        (if se1?
            (format "(*((ptr)((long)~a + (long)~a + ~d)))"
              (format-simple-expr se0)
@@ -3461,12 +3463,12 @@
          (map emit-function-decl le* l*)
          (map emit-function-def le* l*)
          (printf "int main(int argc, char * argv[]) {\n")
-         (printf "  print_scheme_value(~a());\n" l)
+         (printf "  print_scheme_value(~ta());\n" l)
          (printf "  printf(\"\\n\");\n")
          (printf "  return 0;\n")
          (printf "}\n"))]))
 
-  ;;; a little helper mostly shamelesly stolen from 
+  ;;; a little helper mostly shamelesly stolen from
   ;;; the Chez Scheme User's Guide
   (define-syntax with-implicit
     (syntax-rules ()
